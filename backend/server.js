@@ -69,17 +69,21 @@ async function bootstrap() {
     await connectDB();
     logger.info('✅ MongoDB connected');
 
-    logger.info('🔥 Pre-warming ML models...');
-    Promise.allSettled([
-      warmupEmbedder(),
-      warmUpCrossEncoder(),
-    ]).then((results) => {
-      results.forEach((r, i) => {
-        const name = i === 0 ? 'Bi-encoder (MiniLM)' : 'Cross-encoder (ms-marco)';
-        if (r.status === 'fulfilled') logger.info(`✅ ${name} ready`);
-        else logger.warn(`⚠️  ${name} warm-up failed: ${r.reason?.message}`);
+    if (process.env.NODE_ENV !== 'production') {
+      logger.info('🔥 Pre-warming ML models...');
+      Promise.allSettled([
+        warmupEmbedder(),
+        warmUpCrossEncoder(),
+      ]).then((results) => {
+        results.forEach((r, i) => {
+          const name = i === 0 ? 'Bi-encoder (MiniLM)' : 'Cross-encoder (ms-marco)';
+          if (r.status === 'fulfilled') logger.info(`✅ ${name} ready`);
+          else logger.warn(`⚠️  ${name} warm-up failed: ${r.reason?.message}`);
+        });
       });
-    });
+    } else {
+      logger.info('⚡ Production mode — ML models will load on first request');
+    }
 
     app.listen(PORT, () => {
       logger.info(`🚀 Curalink backend running on port ${PORT}`);

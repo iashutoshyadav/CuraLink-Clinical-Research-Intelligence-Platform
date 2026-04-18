@@ -215,6 +215,9 @@ function SummaryPanel({
     <div className="space-y-3">
 
       {}
+      {evidenceGrade && <EvidenceGradeBadge grade={evidenceGrade} />}
+
+      {}
       {conditionOverview && (
         <SectionCard title="Condition Overview" icon={Brain} iconColor="#3b82f6" bg="#fafafa" border="#e5e7eb">
           <p className="text-sm leading-relaxed" style={{ color: '#374151' }}>{conditionOverview}</p>
@@ -308,9 +311,6 @@ function SummaryPanel({
           )}
         </SectionCard>
       )}
-
-      {}
-      {evidenceGrade && <EvidenceGradeBadge grade={evidenceGrade} />}
 
       {}
       {recommendation && (

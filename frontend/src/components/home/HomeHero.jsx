@@ -194,13 +194,19 @@ export default function HomeHero() {
               <button
                 key={i}
                 type="button"
-                onClick={() => setForm((f) => ({ ...f, disease: ex.disease, query: ex.query }))}
+                onClick={() => {
+                  setPatientContext({ disease: ex.disease, location: '' });
+                  navigate('/chat');
+                  setTimeout(async () => {
+                    await sendMessage({ query: ex.query, disease: ex.disease, patientName: '', location: '' });
+                  }, 100);
+                }}
                 className="text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all"
                 style={{ background: '#f4f4f4', color: '#111827', border: '1px solid #e5e7eb' }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; e.currentTarget.style.color = '#1d4ed8'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = '#f4f4f4'; e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.color = '#374151'; }}
               >
-                {ex.disease}
+                {ex.disease} →
               </button>
             ))}
           </div>

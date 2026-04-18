@@ -172,7 +172,7 @@ export async function rankPublications(publications, query, disease = '') {
     return 0.75;
   };
 
-  if (!USE_ONNX) {
+  if (USE_ONNX) {
     // Full pipeline: BM25 → MiniLM embeddings → RRF → cross-encoder → MMR
     const { rankByEmbeddings }   = await import('./embeddingRanker.js');
     const { crossEncoderRerank } = await import('./crossEncoderReranker.js');

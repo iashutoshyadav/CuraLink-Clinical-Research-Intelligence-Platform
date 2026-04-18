@@ -2,8 +2,6 @@ import { Worker }            from 'worker_threads';
 import { fileURLToPath }     from 'url';
 import { dirname, join }     from 'path';
 import { rankByKeywords }    from './keywordRanker.js';
-import { rankByEmbeddings }  from './embeddingRanker.js';
-import { crossEncoderRerank } from './crossEncoderReranker.js';
 import { recencyBonus, citationScore } from '../../utils/scorer.js';
 import { TOP_K_PUBLICATIONS } from '../../config/constants.js';
 import logger from '../../utils/logger.js';
@@ -176,6 +174,9 @@ export async function rankPublications(publications, query, disease = '') {
 
   if (!USE_ONNX) {
     // Full pipeline: BM25 → MiniLM embeddings → RRF → cross-encoder → MMR
+    const { rankByEmbeddings }   = await import('./embeddingRanker.js');
+    const { crossEncoderRerank } = await import('./crossEncoderReranker.js');
+
     const bm25Ranks = new Map(bm25Sorted.map((p, idx) => [p._id || p.url || p.title, idx + 1]));
 
     const embeddingCandidates = bm25Sorted.slice(0, EMBEDDING_CANDIDATE_LIMIT);

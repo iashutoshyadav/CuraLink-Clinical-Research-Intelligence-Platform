@@ -10,8 +10,12 @@ import chatRoutes from './routes/chat.routes.js';
 import sessionRoutes from './routes/session.routes.js';
 import evalRoutes from './routes/eval.routes.js';
 import logger from './utils/logger.js';
-import { warmupEmbedder, getEmbedderStatus } from './services/embeddings/embedder.js';
-import { warmUpCrossEncoder, getCrossEncoderStatus } from './services/ranking/crossEncoderReranker.js';
+const { warmupEmbedder, getEmbedderStatus } = process.env.NODE_ENV !== 'production'
+  ? await import('./services/embeddings/embedder.js')
+  : { warmupEmbedder: null, getEmbedderStatus: () => 'disabled' };
+const { warmUpCrossEncoder, getCrossEncoderStatus } = process.env.NODE_ENV !== 'production'
+  ? await import('./services/ranking/crossEncoderReranker.js')
+  : { warmUpCrossEncoder: null, getCrossEncoderStatus: () => 'disabled' };
 import axios from 'axios';
 
 const app = express();

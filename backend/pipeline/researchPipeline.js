@@ -39,11 +39,20 @@ function parseDateFilter(query) {
   return null;
 }
 
-function aggregateTopAuthors(publications, topN = 8) {
+function aggregateTopAuthors(publications, disease = '', topN = 8) {
   const authorMap = new Map();
-  const currentYear = new Date().getFullYear();
 
-  publications.forEach((pub) => {
+  const diseaseTerms = disease.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((t) => t.length >= 3);
+
+  const relevantPubs = publications.filter((pub) => {
+    if (diseaseTerms.length === 0) return true;
+    const text = `${pub.title || ''} ${(pub.abstract || '').slice(0, 300)}`.toLowerCase();
+    return diseaseTerms.some((t) => text.includes(t));
+  });
+
+  const pool = relevantPubs.length >= 3 ? relevantPubs : publications;
+
+  pool.forEach((pub) => {
     const authors = Array.isArray(pub.authors) ? pub.authors : [];
     const citations = pub.citationCount || 0;
     const year = parseInt(pub.year, 10) || 2010;
@@ -343,7 +352,7 @@ export async function runResearchPipeline(params) {
   });
 
   const topResearchers = isAuthorQuery(userQuery)
-    ? aggregateTopAuthors(rankedPublications)
+    ? aggregateTopAuthors(rankedPublications, disease)
     : [];
 
   logger.info(`[DIAG] Query: "${userQuery}" | Top-3 ranked papers:`);

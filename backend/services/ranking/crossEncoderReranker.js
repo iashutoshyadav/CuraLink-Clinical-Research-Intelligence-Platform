@@ -1,5 +1,7 @@
 import logger from '../../utils/logger.js';
 
+let _loaded = false;
+
 export async function crossEncoderRerank(query, candidates) {
   if (process.env.NODE_ENV === 'production') return candidates;
   try {
@@ -10,6 +12,7 @@ export async function crossEncoderRerank(query, candidates) {
       AutoModelForSequenceClassification.from_pretrained('Xenova/ms-marco-MiniLM-L-6-v2', { quantized: true }),
     ]);
     [tokenizer, model] = loaded;
+    _loaded = true;
     logger.info('[CrossEncoder] ms-marco-MiniLM-L-6-v2 loaded');
     const inputs = tokenizer(candidates.map(() => query), {
       text_pair: candidates.map((d) => `${d.title}. ${(d.abstract || '').slice(0, 300)}`),
@@ -26,7 +29,8 @@ export async function crossEncoderRerank(query, candidates) {
 }
 
 export function getCrossEncoderStatus() {
-  return process.env.NODE_ENV === 'production' ? 'disabled' : 'loading';
+  if (process.env.NODE_ENV === 'production') return 'disabled';
+  return _loaded ? 'ready' : 'loading';
 }
 
 export async function warmUpCrossEncoder() {}

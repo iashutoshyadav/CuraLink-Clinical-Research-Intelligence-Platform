@@ -3,6 +3,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://curalink-clinical-research-intelligence-platform-production.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

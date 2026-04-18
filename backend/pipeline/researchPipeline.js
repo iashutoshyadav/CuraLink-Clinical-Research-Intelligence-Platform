@@ -16,6 +16,7 @@ import { validateAnswer } from '../services/evaluation/answerValidator.js';
 import { computeConfidenceScore } from '../utils/scorer.js';
 
 import { API_CONCURRENCY_LIMIT, MAX_UNIQUE_PAPERS, GROQ_MAX_INPUT_TOKENS } from '../config/constants.js';
+import { embedQueryText, searchVectorCache, storeVectorCache } from '../services/cache/vectorCache.js';
 
 function parseDateFilter(query) {
   const q = query.toLowerCase();
@@ -245,6 +246,22 @@ export async function runResearchPipeline(params) {
   metrics.queryVariants = queryVariants.length;
   observer.endTimer('query_expansion', { counts: queryVariants.length });
 
+  // Vector cache check — skip full pipeline on semantic cache hit
+  const queryEmbedding = await embedQueryText(`${disease} ${userQuery}`);
+  const cachedResult = await searchVectorCache(queryEmbedding, disease);
+  if (cachedResult) {
+    logger.info(`[PIPELINE] Returning vector cache result for "${disease}" — "${userQuery}"`);
+    return {
+      ...cachedResult,
+      sources: buildSourceMap(cachedResult.publications ?? [], cachedResult.trials ?? []),
+      topResearchers: isAuthorQuery(userQuery)
+        ? aggregateTopAuthors(cachedResult.publications ?? [], disease)
+        : [],
+      clinicalTrialsSummary: generateDeterministicTrialSummary(cachedResult.trials ?? [], location),
+      metrics: { ...metrics, cached: true },
+    };
+  }
+
   observer.startTimer('parallel_fetch');
   let publications = [];
   let trials       = [];
@@ -449,7 +466,7 @@ export async function runResearchPipeline(params) {
 
   const deterministicTrialSummary = generateDeterministicTrialSummary(trials, location);
 
-  return {
+  const finalResult = {
     ...structuredOutput,
     clinicalTrialsSummary: deterministicTrialSummary,
     showOnlyFocused: structuredOutput.showOnlyFocused ?? false,
@@ -469,6 +486,11 @@ export async function runResearchPipeline(params) {
         ? `Groq — ${process.env.GROQ_MODEL ?? 'llama3-8b-8192'}`
         : `Ollama — ${process.env.OLLAMA_REASONING_MODEL ?? 'mistral:7b'}`,
   };
+
+  // Store in vector cache async — don't block response
+  storeVectorCache(queryEmbedding, disease, userQuery, finalResult).catch(() => {});
+
+  return finalResult;
 }
 
 function templateSynthesis(disease, userQuery, pubs, trials, totalRetrieved = pubs.length) {

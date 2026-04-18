@@ -103,8 +103,45 @@ export function getMeshQuery(disease, userQuery) {
   return `${disease} ${userQuery}`;
 }
 
+const SYNONYM_MAP = {
+  'immunotherapy':          ['checkpoint inhibitor', 'PD-L1', 'PD-1', 'nivolumab', 'pembrolizumab', 'CAR-T'],
+  'deep brain stimulation': ['DBS', 'subthalamic nucleus', 'STN stimulation', 'neuromodulation'],
+  'chemotherapy':           ['cytotoxic therapy', 'antineoplastic', 'chemotherapeutic agent'],
+  'targeted therapy':       ['tyrosine kinase inhibitor', 'EGFR inhibitor', 'targeted treatment'],
+  'stem cell':              ['bone marrow transplant', 'hematopoietic stem cell', 'cell therapy'],
+  'gene therapy':           ['CRISPR', 'gene editing', 'viral vector', 'gene transfer'],
+  'drug trial':             ['clinical trial', 'phase 2', 'phase 3', 'randomized controlled trial'],
+  'treatment':              ['therapy', 'intervention', 'management', 'regimen'],
+  'side effects':           ['adverse effects', 'toxicity', 'safety profile', 'complications'],
+  'biomarker':              ['molecular marker', 'predictive marker', 'diagnostic marker'],
+  'surgery':                ['surgical resection', 'operative treatment', 'minimally invasive'],
+  'radiation':              ['radiotherapy', 'radiation therapy', 'stereotactic radiosurgery'],
+  'cognitive decline':      ['dementia', 'memory loss', 'neurodegeneration', 'cognitive impairment'],
+  'heart attack':           ['myocardial infarction', 'acute coronary syndrome', 'cardiac arrest'],
+  'blood pressure':         ['hypertension', 'antihypertensive', 'blood pressure control'],
+  'insulin':                ['insulin resistance', 'glycemic control', 'glucose metabolism'],
+  'antibody':               ['monoclonal antibody', 'immunoglobulin', 'biologic therapy'],
+  'pain':                   ['analgesic', 'pain management', 'chronic pain', 'nociception'],
+  'depression':             ['major depressive disorder', 'antidepressant', 'mood disorder'],
+  'anxiety':                ['anxiolytic', 'generalized anxiety', 'panic disorder'],
+};
+
+function expandWithSynonyms(query) {
+  const lower = query.toLowerCase();
+  const extras = [];
+  for (const [term, synonyms] of Object.entries(SYNONYM_MAP)) {
+    if (lower.includes(term)) {
+      extras.push(...synonyms.slice(0, 2));
+      break;
+    }
+  }
+  if (extras.length === 0) return query;
+  return `${query} OR ${extras.join(' OR ')}`;
+}
+
 function buildRuleBasedExpansions(disease, userQuery) {
   const mesh = getMeshQuery(disease, userQuery);
+  const expanded = expandWithSynonyms(userQuery);
 
   const searchTerms = userQuery
     .replace(/^(what|who|how|why|when|where|is|are|does|do|can|which|tell me about)\s+/i, '')
@@ -113,7 +150,7 @@ function buildRuleBasedExpansions(disease, userQuery) {
 
   return [
     mesh,
-    `${disease} ${searchTerms}`,
+    `${disease} ${expanded}`,
     `${disease} ${searchTerms} systematic review`,
     `${disease} ${searchTerms} clinical trial`,
   ].slice(0, QUERY_VARIANTS);

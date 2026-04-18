@@ -446,7 +446,9 @@ export async function runResearchPipeline(params) {
     showOnlyFocused: structuredOutput.showOnlyFocused ?? false,
     publications:    rankedPublications,
     trials,
-    topResearchers:  topResearchers.length > 0 ? topResearchers : (structuredOutput.topResearchers ?? []),
+    topResearchers:  isAuthorQuery(userQuery)
+      ? (topResearchers.length > 0 ? topResearchers : (structuredOutput.topResearchers ?? []))
+      : [],
     sources:         buildSourceMap(rankedPublications, trials, requestId),
     confidence_score: finalConfidence,
     validation:      validationResult,

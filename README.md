@@ -1,6 +1,6 @@
-# Curalink — AI Medical Research Assistant
+# Curalink — AI Medical Research Intelligence Platform
 
-> A full-stack MERN application that retrieves 180+ papers from 3 live databases, re-ranks them with a 5-stage hybrid pipeline, and synthesises structured, evidence-graded answers using Meta Llama 3.3 70B — with zero hallucinations.
+> A full-stack MERN application that retrieves 180+ papers from 3 live databases, re-ranks them with a 5-stage hybrid AI pipeline, and synthesises structured, evidence-graded answers using Meta Llama 3.3 70B — in under 15 seconds.
 
 ---
 
@@ -8,9 +8,10 @@
 
 | Service | URL |
 |---|---|
-| Frontend | https://curalink.vercel.app |
-| Backend API | https://curalink-backend.up.railway.app |
-| Health Check | https://curalink-backend.up.railway.app/api/health |
+| Frontend | https://cura-link-clinical-research-intelli.vercel.app |
+| Backend API | https://curalink-clinical-research-intelligence-platform-production.up.railway.app |
+| Health Check | https://curalink-clinical-research-intelligence-platform-production.up.railway.app/api/health |
+| GitHub | https://github.com/iashutoshyadav/CuraLink-Clinical-Research-Intelligence-Platform |
 
 ---
 
@@ -18,10 +19,10 @@
 
 Curalink is not a chatbot. It is a **research + reasoning system** that:
 
-1. Expands your query into semantic variants
-2. Fetches up to 600 raw results from PubMed, OpenAlex, and ClinicalTrials.gov in parallel
-3. Deduplicates and re-ranks 180 unique papers through a 5-stage pipeline
-4. Sends the top 8 papers to Llama 3.3 70B with strict anti-hallucination rules
+1. Expands your query into 4 semantic variants using Llama 3.3 70B + MeSH vocabulary
+2. Fetches up to 180+ results from PubMed, OpenAlex, and ClinicalTrials.gov in parallel
+3. Deduplicates and re-ranks papers through a 5-stage hybrid pipeline
+4. Sends the top-ranked papers to Llama 3.3 70B with strict anti-hallucination rules
 5. Returns a structured, cited, evidence-graded answer in under 15 seconds
 
 ---
@@ -33,65 +34,47 @@ User Input (disease + query + optional name/location)
     │
     ▼
 [Stage 1] Query Expansion
-    Llama 3.2 3B (local) rewrites query into 2 variants
-    Falls back to MeSH rule-based expansion in production
+    Llama 3.3 70B generates 4 semantic query variants
+    MeSH controlled vocabulary mapping (e.g. "Parkinson's" → "Parkinson Disease"[MeSH])
+    Synonym expansion (e.g. "immunotherapy" → "checkpoint inhibitor, PD-L1, nivolumab")
+    Falls back to rule-based MeSH expansion if LLM unavailable
     │
     ▼
-[Stage 2] Tri-Source Parallel Retrieval  (p-limit concurrency)
-    ├── PubMed        — esearch + efetch, retmax=150, API key, date filter
-    ├── OpenAlex      — paginated search, per_page=150, 4 pages max
-    └── ClinicalTrials.gov v2 — 3 status filters × 2 pages = up to 150 trials
+[Stage 2] Tri-Source Parallel Retrieval
+    ├── PubMed        — NCBI E-utilities esearch + efetch, MeSH terms
+    ├── OpenAlex      — 250M open academic papers, paginated search
+    └── ClinicalTrials.gov v2 — recruiting + active + completed trials
     DOI/title deduplication → 180 unique papers
-    Sparse-result fallback: retry with disease-only query if < 10 results
-    │
-    ▼
-[Stage 2.5] Study Type Tagging
-    RCT / Systematic Review / Cohort / Peer-reviewed
-    Inferred from MeSH tags, OpenAlex type field, title/abstract keywords
     │
     ▼
 [Stage 3A] BM25 Keyword Scoring        (Worker Thread — non-blocking)
+    Probabilistic keyword relevance scoring over all candidates
     │
     ▼
-[Stage 3B] MiniLM ONNX Embeddings      (top 150 BM25 candidates, no API)
+[Stage 3B] MiniLM ONNX Embeddings
     all-MiniLM-L6-v2 running in-process via @xenova/transformers
+    Semantic similarity between query and paper embeddings
     │
     ▼
-[Stage 3C] RRF Fusion                  (Reciprocal Rank Fusion, K=60)
-    Merges BM25 + embedding ranked lists
+[Stage 3C] RRF Fusion
+    Reciprocal Rank Fusion merges BM25 + embedding + recency + citation signals
     │
     ▼
-[Stage 3C] ms-marco Cross-Encoder      (top 15 RRF candidates)
-    Production-grade relevance model, not just similarity
-    │
-    ▼
-[Stage 3D] Passage Extraction          (top 3 query-relevant sentences/paper)
-    │
-    ▼
-[Stage 3E] Query-Relevance Filter      (15% term overlap threshold)
-    Prevents stale insights when same disease, different query
-    │
-    ▼
-[Contradiction Detection Pre-Pass]
-    Flags conflicting evidence, injects explicit instruction into prompt
-    │
-    ▼
-[Token Budget Guard]
-    Groq: 7500 token input cap
-    History summarised if needed
+[Stage 3D] ms-marco Cross-Encoder Re-ranking
+    ms-marco-MiniLM-L-6-v2 scores query+document pairs together
+    More accurate than bi-encoder similarity — reads context jointly
     │
     ▼
 [Stage 4] LLM Reasoning — Llama 3.3 70B via Groq Cloud
-    9 strict rules: no placeholders, inline citations, evidence hierarchy
-    Evidence grading: Grade A (RCTs) → D (insufficient evidence)
-    Focus mode routing: contextual/drill_down → targeted prompts
+    Strict anti-hallucination rules: every claim must cite a paper from context
+    Evidence grading: Grade A (RCTs) → B (cohort) → C (expert opinion)
+    Structured JSON output: overview, findings, treatments, implications, recommendation
     │
     ▼
 [Post-Processing]
-    JSON extraction + schema enforcement
-    Answer validation: citation density, hallucination detection
-    Confidence scoring with hallucination penalty
-    Deterministic trial summary (LLM never generates trial data)
+    Citation index validation — removes hallucinated references
+    Disease-relevant author aggregation for researcher queries
+    Deterministic trial summaries — LLM never generates trial data directly
     │
     ▼
 Structured Output → SSE Stream → React Frontend
@@ -103,49 +86,46 @@ Structured Output → SSE Stream → React Frontend
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, Vite, Tailwind CSS, Zustand, Framer Motion |
-| Backend | Node.js (ESM), Express, SSE streaming |
-| Database | MongoDB Atlas (sessions, user profiles) |
-| Embeddings | all-MiniLM-L6-v2 via ONNX Runtime (in-process) |
-| Re-ranking | ms-marco-MiniLM-L-6-v2 cross-encoder (ONNX) |
-| LLM Primary | Llama 3.3 70B via Groq Cloud (free tier) |
-| LLM Backup | Mistral 7B via Ollama (local only) |
-| Query Expansion | Llama 3.2 3B via Ollama → rule-based MeSH fallback |
+| Frontend | React 18, Vite, Tailwind CSS, Zustand, Framer Motion, React Router v6 |
+| Backend | Node.js (ESM), Express.js, Server-Sent Events (SSE streaming) |
+| Database | MongoDB Atlas — chat sessions and message history |
+| Embeddings | all-MiniLM-L6-v2 via ONNX Runtime (@xenova/transformers, in-process) |
+| Re-ranking | ms-marco-MiniLM-L-6-v2 cross-encoder via ONNX Runtime (in-process) |
+| LLM | Llama 3.3 70B via Groq Cloud |
+| Query Expansion | Llama 3.3 70B (Groq) → rule-based MeSH fallback |
+| Frontend Hosting | Vercel (CDN + SPA routing) |
+| Backend Hosting | Railway Hobby ($5/mo — 8GB RAM for ONNX models) |
 
 ---
 
 ## Features
 
-### AI Features
-- 5-stage hybrid ranking: BM25 → MiniLM → RRF → cross-encoder → MMR
-- Contradiction detection pre-pass (flags conflicting study outcomes)
-- Evidence grading per response: Grade A/B/C/D with RCT/meta/cohort counts
+### AI & Research
+- 5-stage hybrid ranking: BM25 → MiniLM bi-encoder → RRF → ms-marco cross-encoder
+- Evidence grading per response: Grade A / B / C based on study type
 - Study type tagging: RCT, systematic review, cohort, peer-reviewed
-- Date intent parsing: "last 3 years", "since 2020", "recent studies"
-- Deterministic trial summaries (no LLM hallucination on trial data)
-- Answer validation: citation density, numeric fact grounding (±5%)
-- Placeholder detection: strips "X%", "Y months" template leaks
-- Circuit breaker: template synthesis fallback if LLM fails
+- MeSH vocabulary mapping for 20 major diseases
+- Synonym expansion for 20 medical terms (immunotherapy, DBS, chemotherapy, etc.)
+- Disease-relevant author filtering for researcher queries
+- Active clinical trials with eligibility criteria and contact info
+- Full citation transparency — every AI claim links to a real source
 
-### Product Features
-- Multi-turn conversation with session memory
-- 5-type follow-up classifier: contextual, drill_down, comparison, refinement, new_topic
-- Personalization: UserProfile with conditions + query history injected into prompts
+### Product
+- Multi-turn conversation with session memory (MongoDB)
+- Patient context: name, disease, location injected into pipeline
 - Location-aware trial filtering ("trials in India")
-- Out-of-scope guard: non-medical queries rejected gracefully
-- Research history saved to localStorage
-- Export to PDF, share link
+- Example query buttons that auto-submit on click
 - Loading skeleton while pipeline runs
-- Pipeline progress stepper (5 animated stages)
+- SSE real-time streaming — results appear progressively
 
-### Backend Features
-- SSE streaming (events: session/cache/token/result/done/error)
-- 24h in-process LRU cache (SHA-256 key, 500 entries)
-- Per-session rate limiting (10 req/min)
-- p-limit concurrency (5 parallel API calls)
-- axiosRetry with exponential backoff
-- MongoDB session TTL (7-day auto-expire)
-- ONNX model pre-warming on server boot
+### Backend
+- SSE streaming (events: session / token / result / done / error)
+- Per-IP rate limiting (100 req / 15 min)
+- Trust proxy config for Railway load balancer
+- CORS restricted to Vercel domain in production
+- ONNX models lazy-loaded on first request, cached in memory
+- Helmet.js security headers
+- Winston structured logging
 
 ---
 
@@ -156,35 +136,29 @@ Curalink/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── chat/          # MessageBubble, ChatWindow, FollowUpBar
+│   │   │   ├── chat/          # ChatWindow, FollowUpBar, InputForm, MessageBubble
 │   │   │   ├── home/          # HomeHero, HomeFeatures
-│   │   │   ├── results/       # ResultsTabs, PublicationCard, TrialCard, FocusedAnswerCard
-│   │   │   └── ui/            # LoadingSpinner, PipelineProgress, StreamingText
+│   │   │   ├── results/       # ResultsTabs, PublicationCard, TrialCard, SourcePanel
+│   │   │   └── ui/            # Navbar, Footer, LoadingSpinner, StreamingText
 │   │   ├── hooks/             # useChat.js (SSE handler)
 │   │   ├── store/             # useChatStore.js (Zustand)
 │   │   └── pages/             # Home.jsx, Chat.jsx
-│   └── vercel.json
+│   └── vercel.json            # SPA routing + Railway API proxy
 │
 ├── backend/
 │   ├── pipeline/
-│   │   └── researchPipeline.js        # Main orchestrator
+│   │   └── researchPipeline.js        # Main 5-stage orchestrator
 │   ├── services/
 │   │   ├── fetchers/                  # pubmedFetcher, openAlexFetcher, clinicalTrialsFetcher
 │   │   ├── ranking/                   # hybridRanker, embeddingRanker, crossEncoderReranker, bm25Worker
-│   │   ├── llm/                       # llmService (Groq → Ollama cascade)
-│   │   ├── query/                     # queryExpander (Ollama → MeSH fallback)
-│   │   ├── followup/                  # followUpClassifier
-│   │   ├── evaluation/                # answerValidator
-│   │   └── memory/                    # conversationMemory
-│   ├── prompts/
-│   │   └── v2.js                      # Production prompt builder
-│   ├── models/                        # Session.model.js, UserProfile.model.js
-│   ├── utils/                         # normalizer, tokenGuard, scorer, locationExtractor
+│   │   ├── llm/                       # llmService (Groq)
+│   │   ├── query/                     # queryExpander (LLM → MeSH fallback)
+│   │   └── embeddings/                # embedder.js (MiniLM ONNX)
+│   ├── models/                        # Session.model.js
 │   ├── config/
-│   │   └── constants.js               # FETCH_LIMIT=150, TOP_K=8, GROQ_MAX_INPUT=7500
+│   │   └── constants.js               # FETCH_LIMIT, TOP_K, QUERY_VARIANTS
 │   └── server.js
 │
-├── railway.json                       # Railway backend deploy config
 └── README.md
 ```
 
@@ -194,15 +168,14 @@ Curalink/
 
 ### Prerequisites
 - Node.js 18+
-- MongoDB Atlas account (free)
+- MongoDB Atlas account (free tier works)
 - Groq API key — free at [console.groq.com](https://console.groq.com)
-- Ollama (optional, for local query expansion)
 
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/yourusername/curalink.git
-cd Curalink
+git clone https://github.com/iashutoshyadav/CuraLink-Clinical-Research-Intelligence-Platform.git
+cd CuraLink-Clinical-Research-Intelligence-Platform
 
 # Install backend
 cd backend && npm install
@@ -213,9 +186,15 @@ cd ../frontend && npm install
 
 ### 2. Configure Environment
 
-```bash
-cp backend/.env.example backend/.env
-# Edit backend/.env — add MONGO_URI and GROQ_API_KEY
+Create `backend/.env`:
+
+```env
+MONGO_URI=your_mongodb_atlas_uri
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=llama-3.3-70b-versatile
+PUBMED_API_KEY=your_ncbi_api_key
+NODE_ENV=development
+PORT=5000
 ```
 
 ### 3. Start Development
@@ -232,16 +211,6 @@ cd frontend && npm run dev
 - Backend: http://localhost:5000
 - Health: http://localhost:5000/api/health
 
-### 4. Optional: Local LLM (Query Expansion)
-
-```bash
-# Install Ollama from https://ollama.com/download
-ollama pull llama3.2:3b
-ollama serve
-```
-
-Without Ollama, query expansion uses rule-based MeSH terms (works fine in production).
-
 ---
 
 ## Deployment
@@ -250,8 +219,8 @@ Without Ollama, query expansion uses rule-based MeSH terms (works fine in produc
 
 1. Push code to GitHub
 2. Go to [railway.app](https://railway.app) → New Project → Deploy from GitHub
-3. Set **Root Directory** to `backend`
-4. Add environment variables (copy from `backend/.env.example`)
+3. Set **Root Directory** to `backend` (no leading slash)
+4. Add environment variables (see table below)
 5. Railway auto-runs `npm start`
 
 **Required env vars on Railway:**
@@ -261,18 +230,15 @@ GROQ_API_KEY
 GROQ_MODEL=llama-3.3-70b-versatile
 PUBMED_API_KEY
 NODE_ENV=production
-FRONTEND_URL=https://your-app.vercel.app
+FRONTEND_URL=https://cura-link-clinical-research-intelli.vercel.app
 PORT=5000
 ```
 
 ### Frontend → Vercel
 
-1. Update `frontend/vercel.json` — replace the Railway URL with your actual Railway domain
-2. Go to [vercel.com](https://vercel.com) → New Project → Import repo
-3. Set **Root Directory** to `frontend`, Framework to **Vite**
-4. Deploy
-
-> Note: ONNX models auto-download on first Railway boot (~30–60s). Subsequent requests are fast.
+1. Go to [vercel.com](https://vercel.com) → New Project → Import repo
+2. Set **Root Directory** to `frontend`, Framework to **Vite**
+3. Deploy — SPA routing and API proxy are configured in `vercel.json`
 
 ---
 
@@ -281,11 +247,11 @@ PORT=5000
 | Variable | Required | Description |
 |---|---|---|
 | `MONGO_URI` | ✅ | MongoDB Atlas connection string |
-| `GROQ_API_KEY` | ✅ | Groq Cloud API key (free at console.groq.com) |
+| `GROQ_API_KEY` | ✅ | Groq Cloud API key |
 | `GROQ_MODEL` | ✅ | `llama-3.3-70b-versatile` |
-| `PUBMED_API_KEY` | Recommended | NCBI key — 10 req/s vs 3 req/s |
-| `FRONTEND_URL` | Production | Deployed Vercel URL (for CORS) |
-| `OLLAMA_URL` | Local only | `http://localhost:11434` |
+| `PUBMED_API_KEY` | Recommended | NCBI key — 10 req/s vs 3 req/s without |
+| `FRONTEND_URL` | Production | Vercel URL (for CORS) |
+| `NODE_ENV` | Production | Set to `production` on Railway |
 | `PORT` | Optional | Default: 5000 |
 
 ---
@@ -306,7 +272,7 @@ PORT=5000
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/chat` | Run research pipeline (SSE stream) |
+| POST | `/api/chat/stream` | Run research pipeline (SSE stream) |
 | GET | `/api/session/:id` | Get session history |
 | GET | `/api/health` | System health + model status |
 
@@ -316,16 +282,13 @@ PORT=5000
 
 | Role | Model | Provider |
 |---|---|---|
-| LLM Reasoning (primary) | Llama 3.3 70B | Groq Cloud |
-| LLM Reasoning (backup) | Mistral 7B | Ollama (local) |
-| Query Expansion | Llama 3.2 3B | Ollama (local) |
-| Semantic Embeddings | all-MiniLM-L6-v2 | ONNX in-process |
-| Cross-Encoder Re-ranking | ms-marco-MiniLM-L-6-v2 | ONNX in-process |
+| LLM Reasoning | Llama 3.3 70B | Groq Cloud (free tier) |
+| Query Expansion | Llama 3.3 70B | Groq Cloud |
+| Semantic Embeddings | all-MiniLM-L6-v2 (quantized) | ONNX in-process |
+| Cross-Encoder Re-ranking | ms-marco-MiniLM-L-6-v2 (quantized) | ONNX in-process |
 
 ---
 
 ## License
 
 MIT — built for the Curalink AI Medical Research Hackathon 2026.
-
-> ⚠️ For research and educational purposes only. Always consult a qualified physician before making medical decisions.

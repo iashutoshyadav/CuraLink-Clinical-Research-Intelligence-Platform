@@ -182,9 +182,6 @@ export default function ChatInput() {
           </div>
         </div>
 
-        <p className="text-center text-[11px] mt-2.5" style={{ color: '#9ca3af' }}>
-          Curalink may make mistakes. Always consult a qualified physician.
-        </p>
       </div>
     </div>
   );

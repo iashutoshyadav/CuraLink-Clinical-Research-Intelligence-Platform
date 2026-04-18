@@ -151,6 +151,8 @@ function topicRelevanceFilter(publications, query, disease = '') {
   return relevant.length >= MIN_AFTER_FILTER ? relevant : publications;
 }
 
+const USE_ONNX = process.env.NODE_ENV !== 'production';
+
 export async function rankPublications(publications, query, disease = '') {
   if (!publications || publications.length === 0) return [];
 
@@ -161,20 +163,10 @@ export async function rankPublications(publications, query, disease = '') {
 
   const pubsWithBM25 = await rankByKeywordsAsync(filtered, query);
   const bm25Sorted = [...pubsWithBM25].sort((a, b) => (b.keywordScore || 0) - (a.keywordScore || 0));
-  const bm25Ranks  = new Map(bm25Sorted.map((p, idx) => [p._id || p.url || p.title, idx + 1]));
-
-  const embeddingCandidates = bm25Sorted.slice(0, EMBEDDING_CANDIDATE_LIMIT);
-  const pubsWithEmbeddings  = await rankByEmbeddings(embeddingCandidates, query);
-  const embedSorted = [...pubsWithEmbeddings].sort((a, b) => (b.embeddingScore || 0) - (a.embeddingScore || 0));
-
-  const embedRanks = new Map(embedSorted.map((p, idx) => [p._id || p.url || p.title, idx + 1]));
-
-  const rrfScores = reciprocalRankFusion(bm25Ranks, embedRanks);
 
   const sourceCredibility = (pub) => {
     if (pub.source === 'PubMed') return 1.0;
     if (pub.source === 'OpenAlex') {
-
       const journal = (pub.journal || '').toLowerCase();
       if (/biorxiv|medrxiv|arxiv|preprint/i.test(journal)) return 0.6;
       return 0.85;
@@ -182,40 +174,52 @@ export async function rankPublications(publications, query, disease = '') {
     return 0.75;
   };
 
-  for (const pub of pubsWithEmbeddings) {
-    const id = pub._id || pub.url || pub.title;
+  if (!USE_ONNX) {
+    // Full pipeline: BM25 → MiniLM embeddings → RRF → cross-encoder → MMR
+    const bm25Ranks = new Map(bm25Sorted.map((p, idx) => [p._id || p.url || p.title, idx + 1]));
+
+    const embeddingCandidates = bm25Sorted.slice(0, EMBEDDING_CANDIDATE_LIMIT);
+    const pubsWithEmbeddings  = await rankByEmbeddings(embeddingCandidates, query);
+    const embedSorted = [...pubsWithEmbeddings].sort((a, b) => (b.embeddingScore || 0) - (a.embeddingScore || 0));
+    const embedRanks  = new Map(embedSorted.map((p, idx) => [p._id || p.url || p.title, idx + 1]));
+
+    const rrfScores = reciprocalRankFusion(bm25Ranks, embedRanks);
+
+    for (const pub of pubsWithEmbeddings) {
+      const id = pub._id || pub.url || pub.title;
+      pub.finalScore = Math.min(
+        ((rrfScores.get(id) || 0) * 100 + recencyBonus(pub.year) + citationScore(pub.citationCount || 0))
+          * sourceCredibility(pub),
+        1.0,
+      );
+    }
+    for (const pub of bm25Sorted.slice(EMBEDDING_CANDIDATE_LIMIT)) {
+      const id = pub._id || pub.url || pub.title;
+      pub.finalScore = Math.min(
+        ((rrfScores.get(id) || 1 / (RRF_K + EMBEDDING_CANDIDATE_LIMIT + 1)) * 100
+          + recencyBonus(pub.year) + citationScore(pub.citationCount || 0))
+          * sourceCredibility(pub),
+        1.0,
+      );
+    }
+
+    const allScored = [...pubsWithEmbeddings, ...bm25Sorted.slice(EMBEDDING_CANDIDATE_LIMIT)];
+    allScored.sort((a, b) => b.finalScore - a.finalScore);
+
+    const reranked = await crossEncoderRerank(query, allScored.slice(0, CROSS_ENCODER_CANDIDATE_LIMIT));
+    logger.debug(`[HybridRanker] full pipeline ceTop="${reranked[0]?.title?.slice(0,60)}"`);
+    return mmrDiversify([...reranked, ...allScored.slice(CROSS_ENCODER_CANDIDATE_LIMIT)], 0.7, TOP_K_PUBLICATIONS);
+  }
+
+  // Production lightweight pipeline: BM25 + recency + citation scoring only
+  logger.debug('[HybridRanker] Production mode — BM25 + recency/citation scoring (no ONNX)');
+  for (const pub of bm25Sorted) {
     pub.finalScore = Math.min(
-      ((rrfScores.get(id) || 0) * 100 + recencyBonus(pub.year) + citationScore(pub.citationCount || 0))
+      ((pub.keywordScore || 0) + recencyBonus(pub.year) + citationScore(pub.citationCount || 0))
         * sourceCredibility(pub),
       1.0,
     );
   }
-  for (const pub of bm25Sorted.slice(EMBEDDING_CANDIDATE_LIMIT)) {
-    const id = pub._id || pub.url || pub.title;
-    pub.finalScore = Math.min(
-      ((rrfScores.get(id) || 1 / (RRF_K + EMBEDDING_CANDIDATE_LIMIT + 1)) * 100
-        + recencyBonus(pub.year) + citationScore(pub.citationCount || 0))
-        * sourceCredibility(pub),
-      1.0,
-    );
-  }
-
-  const allScored = [
-    ...pubsWithEmbeddings,
-    ...bm25Sorted.slice(EMBEDDING_CANDIDATE_LIMIT),
-  ];
-  allScored.sort((a, b) => b.finalScore - a.finalScore);
-
-  const crossEncoderCandidates = allScored.slice(0, CROSS_ENCODER_CANDIDATE_LIMIT);
-  const reranked = await crossEncoderRerank(query, crossEncoderCandidates);
-
-  logger.debug(`[HybridRanker] bm25Top="${bm25Sorted[0]?.title?.slice(0,60)}" ` +
-    `ceTop="${reranked[0]?.title?.slice(0,60)}" rrfTopScore=${allScored[0]?.finalScore?.toFixed(4)}`);
-
-  const combined = [
-    ...reranked,
-    ...allScored.slice(CROSS_ENCODER_CANDIDATE_LIMIT),
-  ];
-
-  return mmrDiversify(combined, 0.7, TOP_K_PUBLICATIONS);
+  bm25Sorted.sort((a, b) => b.finalScore - a.finalScore);
+  return mmrDiversify(bm25Sorted, 0.7, TOP_K_PUBLICATIONS);
 }

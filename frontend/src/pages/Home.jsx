@@ -5,7 +5,7 @@ import Footer from '../components/ui/Footer.jsx';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-mesh-light bg-noise-light pt-20">
+    <div className="min-h-screen bg-mesh-light bg-noise-light pt-16">
       <HomeHero />
       <HomeFeatures />
       <Footer />

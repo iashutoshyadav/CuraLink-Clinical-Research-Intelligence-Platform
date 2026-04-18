@@ -41,14 +41,14 @@ export default function HomeHero() {
   };
 
   return (
-    <section className="w-full px-5 sm:px-8 pt-10 pb-8">
+    <section className="w-full px-5 sm:px-8 pt-4 pb-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="text-center max-w-3xl mx-auto"
       >
-        {}
+        { }
         <h1 className="font-black mb-4 leading-[1.08] tracking-[-0.03em]"
           style={{ fontSize: 'clamp(2rem, 4.5vw, 3.4rem)', color: '#0d0d0d' }}>
           Medical Research Intelligence{' '}
@@ -57,14 +57,14 @@ export default function HomeHero() {
           </span>
         </h1>
 
-        {}
+        { }
         <p className="text-base leading-relaxed max-w-xl mx-auto mb-6 font-medium" style={{ color: '#1f2937' }}>
           Retrieves <strong style={{ color: '#1d4ed8' }}>180+ papers</strong> from 3 live databases,
           re-ranks with a <strong style={{ color: '#7c3aed' }}>cross-encoder</strong>, and synthesises a
           <strong style={{ color: '#059669' }}> structured, evidence-graded</strong> answer — in under 15 seconds.
         </p>
 
-        {}
+        { }
         <div className="flex items-center justify-center gap-2 flex-wrap mb-6">
           {SOURCES.map((s) => (
             <span key={s.name} className="text-[11px] font-semibold px-3 py-1.5 rounded-full"
@@ -78,7 +78,7 @@ export default function HomeHero() {
           </span>
         </div>
 
-        {}
+        { }
         <div className="flex items-center justify-center gap-1 flex-wrap mb-8">
           {PIPELINE_STAGES.map((s, i) => (
             <React.Fragment key={s.label}>
@@ -94,7 +94,7 @@ export default function HomeHero() {
         </div>
       </motion.div>
 
-      {}
+      { }
       <motion.form
         onSubmit={handleSubmit}
         initial={{ opacity: 0, y: 16 }}
@@ -107,7 +107,7 @@ export default function HomeHero() {
           boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
         }}
       >
-        {}
+        { }
         <div className="absolute top-6 right-6 flex items-center gap-1.5 px-2.5 py-1 rounded-full"
           style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -118,7 +118,7 @@ export default function HomeHero() {
           Start Research
         </p>
 
-        {}
+        { }
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           {[
             { icon: User, field: 'patientName', placeholder: 'Patient name (optional)' },
@@ -140,7 +140,7 @@ export default function HomeHero() {
           ))}
         </div>
 
-        {}
+        { }
         <div className="space-y-3 mb-5">
           {[
             { icon: Stethoscope, field: 'disease', placeholder: 'Disease / Condition *', required: true },
@@ -163,7 +163,7 @@ export default function HomeHero() {
           ))}
         </div>
 
-        {}
+        { }
         <button
           type="submit"
           disabled={isLoading || !form.disease || !form.query}
@@ -181,7 +181,7 @@ export default function HomeHero() {
           }
         </button>
 
-        {}
+        { }
         <div className="mt-5 pt-5" style={{ borderTop: '1px solid #f0f0f0' }}>
           <div className="flex items-center gap-1.5 mb-3">
             <Sparkles size={11} style={{ color: '#3b82f6' }} />

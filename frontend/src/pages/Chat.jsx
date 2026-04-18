@@ -6,11 +6,11 @@ import InputForm from '../components/chat/InputForm.jsx';
 import useChatStore from '../store/useChatStore.js';
 
 export default function Chat() {
-  const messages   = useChatStore((s) => s.messages);
+  const messages = useChatStore((s) => s.messages);
   const hasMessages = messages.length > 0;
 
   return (
-    <div className="flex flex-col h-screen pt-24" style={{ background: '#ffffff' }}>
+    <div className="flex flex-col h-screen pt-16" style={{ background: '#ffffff' }}>
       <AnimatePresence mode="wait">
         {!hasMessages ? (
           <motion.div
@@ -19,7 +19,7 @@ export default function Chat() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.02, y: -20 }}
             transition={{ duration: 0.4, ease: 'easeInOut' }}
-            className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden pt-4 pb-20"
+            className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden pt-2 pb-4"
           >
             <ChatWindow />
             <InputForm />

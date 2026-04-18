@@ -33,4 +33,17 @@ export function getCrossEncoderStatus() {
   return _loaded ? 'ready' : 'loading';
 }
 
-export async function warmUpCrossEncoder() {}
+export async function warmUpCrossEncoder() {
+  if (process.env.NODE_ENV === 'production') return;
+  try {
+    const { AutoTokenizer, AutoModelForSequenceClassification } = await import('@xenova/transformers');
+    await Promise.all([
+      AutoTokenizer.from_pretrained('Xenova/ms-marco-MiniLM-L-6-v2'),
+      AutoModelForSequenceClassification.from_pretrained('Xenova/ms-marco-MiniLM-L-6-v2', { quantized: true }),
+    ]);
+    _loaded = true;
+    logger.info('[CrossEncoder] Warm-up complete');
+  } catch (err) {
+    logger.warn(`[CrossEncoder] Warm-up failed: ${err.message}`);
+  }
+}

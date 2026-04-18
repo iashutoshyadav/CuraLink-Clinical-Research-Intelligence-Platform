@@ -1,5 +1,6 @@
-import { AutoTokenizer, AutoModelForSequenceClassification } from '@xenova/transformers';
 import logger from '../../utils/logger.js';
+
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 let crossEncoderModel     = null;
 let crossEncoderTokenizer = null;
@@ -8,6 +9,8 @@ let modelLoading          = null;
 async function getCrossEncoder() {
   if (crossEncoderModel) return { model: crossEncoderModel, tokenizer: crossEncoderTokenizer };
   if (modelLoading)      return modelLoading;
+
+  const { AutoTokenizer, AutoModelForSequenceClassification } = await import('@xenova/transformers');
 
   modelLoading = Promise.all([
     AutoTokenizer.from_pretrained('Xenova/ms-marco-MiniLM-L-6-v2'),
@@ -28,6 +31,7 @@ async function getCrossEncoder() {
 
 export async function crossEncoderRerank(query, candidates) {
   if (!candidates || candidates.length === 0) return candidates;
+  if (IS_PRODUCTION) return candidates;
 
   try {
     const { model, tokenizer } = await getCrossEncoder();
@@ -69,10 +73,12 @@ export async function crossEncoderRerank(query, candidates) {
 }
 
 export function getCrossEncoderStatus() {
+  if (IS_PRODUCTION) return 'disabled';
   return crossEncoderModel ? 'ready' : 'loading';
 }
 
 export async function warmUpCrossEncoder() {
+  if (IS_PRODUCTION) return;
   try {
     logger.info('[CrossEncoder] Warming up model...');
     const { model, tokenizer } = await getCrossEncoder();

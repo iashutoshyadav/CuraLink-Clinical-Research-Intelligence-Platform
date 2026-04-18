@@ -1,32 +1,24 @@
 import logger from '../../utils/logger.js';
 
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-
-let embedderInstance = null;
+let instance = null;
 
 export async function getEmbedder() {
-  if (IS_PRODUCTION) return null;
-  if (!embedderInstance) {
+  if (process.env.NODE_ENV === 'production') return null;
+  if (!instance) {
     const { pipeline } = await import('@xenova/transformers');
-    embedderInstance = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
-      quantized: true,
-    });
+    instance = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { quantized: true });
   }
-  return embedderInstance;
+  return instance;
 }
 
 export async function warmupEmbedder() {
-  if (IS_PRODUCTION) return;
+  if (process.env.NODE_ENV === 'production') return;
   try {
-    const embedder = await getEmbedder();
-    await embedder('warmup query', { pooling: 'mean', normalize: true });
-    logger.debug('Embedder warmed up successfully in background.');
-  } catch (err) {
-    logger.error(`Embedder warmup failed: ${err.message}`);
-  }
+    const e = await getEmbedder();
+    await e('warmup', { pooling: 'mean', normalize: true });
+  } catch (err) { logger.error(`Embedder warmup failed: ${err.message}`); }
 }
 
 export function getEmbedderStatus() {
-  if (IS_PRODUCTION) return 'disabled';
-  return embedderInstance ? 'ready' : 'loading';
+  return process.env.NODE_ENV === 'production' ? 'disabled' : (instance ? 'ready' : 'loading');
 }

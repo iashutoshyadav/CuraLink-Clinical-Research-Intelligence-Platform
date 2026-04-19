@@ -270,6 +270,13 @@ export async function handleChat(req, res, next) {
     const { type: followUpType, focusMode } = classifyFollowUp(query, lastUserMsg?.content ?? null, disease);
     logger.info(`[CHAT] Follow-up type: ${followUpType} | focusMode: ${focusMode ?? 'full'}`);
 
+    // Enrich follow-up queries with previous context so pipeline searches correctly
+    const enrichedQuery = (
+      followUpType !== 'new_query' &&
+      followUpType !== 'new_topic' &&
+      lastUserMsg?.content
+    ) ? `${lastUserMsg.content} ${query}` : query;
+
     const cacheParams = { disease, query, location: resolvedLocation };
     const isTopicShift = lastUserMsg ? await detectTopicShift(lastUserMsg.content, query) : false;
 
@@ -279,7 +286,7 @@ export async function handleChat(req, res, next) {
 
     const pipelineResult = await pipelineQueue.add(() => runResearchPipeline({
       disease,
-      userQuery:   query,
+      userQuery:   enrichedQuery,
       patientName: patientName ?? session.patientName,
       location:    resolvedLocation,
       conversationHistory,

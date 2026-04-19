@@ -149,7 +149,7 @@ function topicRelevanceFilter(publications, query, disease = '') {
   return relevant.length >= MIN_AFTER_FILTER ? relevant : publications;
 }
 
-const USE_ONNX = process.env.NODE_ENV !== 'production';
+const USE_ONNX = process.env.USE_ONNX !== 'false';
 
 export async function rankPublications(publications, query, disease = '') {
   if (!publications || publications.length === 0) return [];

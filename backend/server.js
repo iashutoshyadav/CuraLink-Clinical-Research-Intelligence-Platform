@@ -10,12 +10,8 @@ import chatRoutes from './routes/chat.routes.js';
 import sessionRoutes from './routes/session.routes.js';
 import evalRoutes from './routes/eval.routes.js';
 import logger from './utils/logger.js';
-const { warmupEmbedder, getEmbedderStatus } = process.env.NODE_ENV !== 'production'
-  ? await import('./services/embeddings/embedder.js')
-  : { warmupEmbedder: null, getEmbedderStatus: () => 'disabled' };
-const { warmUpCrossEncoder, getCrossEncoderStatus } = process.env.NODE_ENV !== 'production'
-  ? await import('./services/ranking/crossEncoderReranker.js')
-  : { warmUpCrossEncoder: null, getCrossEncoderStatus: () => 'disabled' };
+const { warmupEmbedder, getEmbedderStatus } = await import('./services/embeddings/embedder.js');
+const { warmUpCrossEncoder, getCrossEncoderStatus } = await import('./services/ranking/crossEncoderReranker.js');
 import axios from 'axios';
 
 const app = express();
@@ -74,21 +70,17 @@ async function bootstrap() {
     await connectDB();
     logger.info('✅ MongoDB connected');
 
-    if (process.env.NODE_ENV !== 'production') {
-      logger.info('🔥 Pre-warming ML models...');
-      Promise.allSettled([
-        warmupEmbedder(),
-        warmUpCrossEncoder(),
-      ]).then((results) => {
-        results.forEach((r, i) => {
-          const name = i === 0 ? 'Bi-encoder (MiniLM)' : 'Cross-encoder (ms-marco)';
-          if (r.status === 'fulfilled') logger.info(`✅ ${name} ready`);
-          else logger.warn(`⚠️  ${name} warm-up failed: ${r.reason?.message}`);
-        });
+    logger.info('🔥 Pre-warming ML models...');
+    Promise.allSettled([
+      warmupEmbedder(),
+      warmUpCrossEncoder(),
+    ]).then((results) => {
+      results.forEach((r, i) => {
+        const name = i === 0 ? 'Bi-encoder (MiniLM)' : 'Cross-encoder (ms-marco)';
+        if (r.status === 'fulfilled') logger.info(`✅ ${name} ready`);
+        else logger.warn(`⚠️  ${name} warm-up failed: ${r.reason?.message}`);
       });
-    } else {
-      logger.info('⚡ Production mode — ML models will load on first request');
-    }
+    });
 
     app.listen(PORT, () => {
       logger.info(`🚀 Curalink backend running on port ${PORT}`);

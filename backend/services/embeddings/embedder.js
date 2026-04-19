@@ -3,7 +3,6 @@ import logger from '../../utils/logger.js';
 let instance = null;
 
 export async function getEmbedder() {
-  if (process.env.NODE_ENV === 'production') return null;
   if (!instance) {
     const { pipeline } = await import('@xenova/transformers');
     instance = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { quantized: true });
@@ -12,7 +11,6 @@ export async function getEmbedder() {
 }
 
 export async function warmupEmbedder() {
-  if (process.env.NODE_ENV === 'production') return;
   try {
     const e = await getEmbedder();
     await e('warmup', { pooling: 'mean', normalize: true });
@@ -20,5 +18,5 @@ export async function warmupEmbedder() {
 }
 
 export function getEmbedderStatus() {
-  return process.env.NODE_ENV === 'production' ? 'disabled' : (instance ? 'ready' : 'loading');
+  return instance ? 'ready' : 'loading';
 }

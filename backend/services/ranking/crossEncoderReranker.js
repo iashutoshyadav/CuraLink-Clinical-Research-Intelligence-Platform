@@ -3,7 +3,6 @@ import logger from '../../utils/logger.js';
 let _loaded = false;
 
 export async function crossEncoderRerank(query, candidates) {
-  if (process.env.NODE_ENV === 'production') return candidates;
   try {
     const { AutoTokenizer, AutoModelForSequenceClassification } = await import('@xenova/transformers');
     let model, tokenizer;
@@ -29,12 +28,10 @@ export async function crossEncoderRerank(query, candidates) {
 }
 
 export function getCrossEncoderStatus() {
-  if (process.env.NODE_ENV === 'production') return 'disabled';
   return _loaded ? 'ready' : 'loading';
 }
 
 export async function warmUpCrossEncoder() {
-  if (process.env.NODE_ENV === 'production') return;
   try {
     const { AutoTokenizer, AutoModelForSequenceClassification } = await import('@xenova/transformers');
     await Promise.all([

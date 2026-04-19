@@ -92,10 +92,10 @@ const FEATURES = [
 ];
 
 const STATS = [
-  { value: '180',  label: 'Unique papers ranked', color: '#2563eb', icon: BookOpen },
-  { value: '5',    label: 'Ranking stages',        color: '#7c3aed', icon: GitMerge },
-  { value: '3',    label: 'Live data sources',     color: '#059669', icon: Search },
-  { value: 'A–D',  label: 'Evidence grading',      color: '#0891b2', icon: Award },
+  { value: '180', label: 'Unique papers ranked', color: '#2563eb', icon: BookOpen },
+  { value: '5', label: 'Ranking stages', color: '#7c3aed', icon: GitMerge },
+  { value: '3', label: 'Live data sources', color: '#059669', icon: Search },
+  { value: 'A–D', label: 'Evidence grading', color: '#0891b2', icon: Award },
 ];
 
 export default function HomeFeatures() {
@@ -104,7 +104,7 @@ export default function HomeFeatures() {
   return (
     <section className="w-full px-5 sm:px-8 pb-10 max-w-6xl mx-auto">
 
-      {}
+      { }
       <div className="py-10">
         <div className="text-center mb-7">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2" style={{ color: '#3b82f6' }}>
@@ -142,7 +142,7 @@ export default function HomeFeatures() {
         </div>
       </div>
 
-      {}
+      { }
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -160,7 +160,7 @@ export default function HomeFeatures() {
         ))}
       </motion.div>
 
-      {}
+      { }
       <div className="text-center mb-7">
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2" style={{ color: '#3b82f6' }}>
           System Capabilities
@@ -182,14 +182,14 @@ export default function HomeFeatures() {
             style={{ background: '#ffffff', border: '1px solid #e5e7eb' }}
             onClick={() => setSelected(f)}
             onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = f.iconColor;
-                e.currentTarget.style.boxShadow = `0 10px 30px -10px ${f.iconColor}20`;
-                e.currentTarget.style.transform = 'translateY(-4px)';
+              e.currentTarget.style.borderColor = f.iconColor;
+              e.currentTarget.style.boxShadow = `0 10px 30px -10px ${f.iconColor}20`;
+              e.currentTarget.style.transform = 'translateY(-4px)';
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#e5e7eb';
-                e.currentTarget.style.boxShadow = 'none';
-                e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.borderColor = '#e5e7eb';
+              e.currentTarget.style.boxShadow = 'none';
+              e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
             <div className="absolute top-0 left-0 w-full h-0.5" style={{ background: f.topBar }} />
@@ -213,7 +213,7 @@ export default function HomeFeatures() {
         ))}
       </div>
 
-      {}
+      { }
       <AnimatePresence>
         {selected && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

@@ -22,18 +22,19 @@ export default function Footer() {
           <div>
             <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-900 mb-2">Pipeline Layers</h4>
             <ul className="space-y-1.5 text-xs font-bold text-gray-900">
-              <li><a href="#" className="hover:text-brand-600 transition-colors">Semantic Retrieval</a></li>
-              <li><a href="#" className="hover:text-brand-600 transition-colors">Hallucination Shields</a></li>
-              <li><a href="#" className="hover:text-brand-600 transition-colors">Source Verification</a></li>
+              <li><a href="https://github.com/iashutoshyadav/CuraLink-Clinical-Research-Intelligence-Platform#ai-pipeline" target="_blank" rel="noopener noreferrer" className="hover:text-brand-600 transition-colors">Github</a></li>
+              <li><a href="#" target="_blank" rel="noopener noreferrer" className="hover:text-brand-600 transition-colors">Semantic Retrieval</a></li>
+
+              <li><a href="https://www.ncbi.nlm.nih.gov/home/develop/api/" target="_blank" rel="noopener noreferrer" className="hover:text-brand-600 transition-colors">Source Verification</a></li>
             </ul>
           </div>
 
           <div>
             <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-900 mb-2">Research Nodes</h4>
             <ul className="space-y-1.5 text-xs font-bold text-gray-900">
-              <li><a href="#" className="hover:text-emerald-600 transition-colors">PubMed Central</a></li>
-              <li><a href="#" className="hover:text-brand-600 transition-colors">OpenAlex Data</a></li>
-              <li><a href="#" className="hover:text-violet-600 transition-colors">ClinicalTrials.gov</a></li>
+              <li><a href="https://pubmed.ncbi.nlm.nih.gov" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-600 transition-colors">PubMed Central</a></li>
+              <li><a href="https://openalex.org/" target="_blank" rel="noopener noreferrer" className="hover:text-brand-600 transition-colors">OpenAlex Data</a></li>
+              <li><a href="https://clinicaltrials.gov/" target="_blank" rel="noopener noreferrer" className="hover:text-violet-600 transition-colors">ClinicalTrials.gov</a></li>
             </ul>
           </div>
         </div>
@@ -43,9 +44,9 @@ export default function Footer() {
             © 2026 Curalink Intelligence. Research purposes only.
           </p>
           <div className="flex items-center gap-4">
-             <ShieldCheck size={14} className="text-gray-300" />
-             <Zap size={14} className="text-gray-300" />
-             <Brain size={14} className="text-gray-300" />
+            <ShieldCheck size={14} className="text-gray-300" />
+            <Zap size={14} className="text-gray-300" />
+            <Brain size={14} className="text-gray-300" />
           </div>
         </div>
       </div>

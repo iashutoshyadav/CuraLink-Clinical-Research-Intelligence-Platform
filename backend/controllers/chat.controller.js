@@ -9,6 +9,41 @@ import { getEmbedder } from '../services/embeddings/embedder.js';
 import { summariseHistory } from '../services/memory/conversationMemory.js';
 import { extractLocationFromQuery } from '../utils/locationExtractor.js';
 import { classifyFollowUp } from '../services/followup/followUpClassifier.js';
+import axios from 'axios';
+
+async function rewriteFollowUpQuery(disease, previousQuery, followUpQuery) {
+  if (!process.env.GROQ_API_KEY) return followUpQuery;
+  try {
+    const prompt = `You are a medical search specialist. A user is researching "${disease}".
+
+Previous question: "${previousQuery}"
+Follow-up question: "${followUpQuery}"
+
+Rewrite the follow-up into a single complete, standalone medical search query that includes the disease context. Return ONLY the rewritten query, nothing else. Max 15 words.`;
+
+    const response = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        model: process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        max_tokens: 60,
+      },
+      {
+        headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+        timeout: 5000,
+      },
+    );
+    const rewritten = response.data?.choices?.[0]?.message?.content?.trim();
+    if (rewritten && rewritten.length > 5) {
+      logger.info(`[CHAT] Query rewritten: "${followUpQuery}" → "${rewritten}"`);
+      return rewritten;
+    }
+    return followUpQuery;
+  } catch {
+    return followUpQuery;
+  }
+}
 
 class LRUCache {
   constructor({ max = 500, ttl = 86_400_000 }) {
@@ -270,12 +305,12 @@ export async function handleChat(req, res, next) {
     const { type: followUpType, focusMode } = classifyFollowUp(query, lastUserMsg?.content ?? null, disease);
     logger.info(`[CHAT] Follow-up type: ${followUpType} | focusMode: ${focusMode ?? 'full'}`);
 
-    // Enrich follow-up queries with previous context so pipeline searches correctly
+    // Rewrite follow-up queries using LLM so pipeline searches with full context
     const enrichedQuery = (
       followUpType !== 'new_query' &&
       followUpType !== 'new_topic' &&
       lastUserMsg?.content
-    ) ? `${lastUserMsg.content} ${query}` : query;
+    ) ? await rewriteFollowUpQuery(disease, lastUserMsg.content, query) : query;
 
     const cacheParams = { disease, query, location: resolvedLocation };
     const isTopicShift = lastUserMsg ? await detectTopicShift(lastUserMsg.content, query) : false;

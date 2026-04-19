@@ -86,13 +86,13 @@ export function normalizeTrial(study) {
 
   const rawContact = centralContacts[0] ?? locationContacts[0] ?? null;
   const contact = rawContact
-    ? [
-        rawContact.name,
-        rawContact.role ? `(${rawContact.role})` : null,
-        rawContact.phone ? `📞 ${rawContact.phone}` : null,
-        rawContact.email ? `✉ ${rawContact.email}` : null,
-      ].filter(Boolean).join(' ')
-    : 'Contact not listed';
+    ? {
+        name:  rawContact.name  ?? null,
+        role:  rawContact.role  ?? null,
+        phone: rawContact.phone ?? null,
+        email: rawContact.email ?? null,
+      }
+    : null;
 
   return {
     id:          `trial_${nctId}`,

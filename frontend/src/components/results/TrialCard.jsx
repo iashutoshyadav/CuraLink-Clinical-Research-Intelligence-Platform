@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Phone, ExternalLink, FlaskConical, Hash, CheckCircle, Clock } from 'lucide-react';
+import { MapPin, Phone, Mail, ExternalLink, FlaskConical, Hash, CheckCircle, Clock, User } from 'lucide-react';
 import { truncate } from '../../utils/formatResponse.js';
 
 const STATUS_STYLES = {
@@ -126,16 +126,47 @@ export default function TrialCard({ trial, index, disease }) {
       )}
 
       {}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        {trial.contact && trial.contact !== 'Contact not listed' && (
-          <div className="flex items-center gap-1.5 text-xs" style={{ color: '#9ca3af' }}>
-            <Phone size={10} />
-            <span className="truncate max-w-xs">{trial.contact}</span>
+      {trial.contact && (
+        <div className="mb-3 rounded-lg p-2.5" style={{ background: '#f8f7ff', border: '1px solid #ede9fe' }}>
+          <p className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#9ca3af' }}>
+            Contact
+          </p>
+          <div className="flex flex-col gap-1">
+            {trial.contact.name && (
+              <div className="flex items-center gap-1.5 text-xs" style={{ color: '#374151' }}>
+                <User size={10} style={{ color: '#7c3aed', flexShrink: 0 }} />
+                <span>{trial.contact.name}{trial.contact.role ? ` · ${trial.contact.role}` : ''}</span>
+              </div>
+            )}
+            {trial.contact.phone && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <Phone size={10} style={{ color: '#7c3aed', flexShrink: 0 }} />
+                <a href={`tel:${trial.contact.phone}`} style={{ color: '#7c3aed' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#5b21b6'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#7c3aed'}>
+                  {trial.contact.phone}
+                </a>
+              </div>
+            )}
+            {trial.contact.email && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <Mail size={10} style={{ color: '#7c3aed', flexShrink: 0 }} />
+                <a href={`mailto:${trial.contact.email}`} style={{ color: '#7c3aed' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#5b21b6'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#7c3aed'}>
+                  {trial.contact.email}
+                </a>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+      )}
+
+      {}
+      <div className="flex items-center justify-end">
         {trial.url && (
           <a href={trial.url} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-medium ml-auto transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-medium transition-colors"
             style={{ color: '#7c3aed' }}
             onMouseEnter={(e) => e.currentTarget.style.color = '#5b21b6'}
             onMouseLeave={(e) => e.currentTarget.style.color = '#7c3aed'}

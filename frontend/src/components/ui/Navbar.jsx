@@ -35,7 +35,7 @@ export default function Navbar() {
                 Pipeline
               </button>
               {['Clinical Trials', 'Research Sources'].map(item => (
-                <a key={item} href="#" className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-900 hover:text-brand-600 transition-colors">
+                <a key={item} href="https://clinicaltrials.gov/" target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-900 hover:text-brand-600 transition-colors">
                   {item}
                 </a>
               ))}

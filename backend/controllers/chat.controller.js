@@ -11,6 +11,55 @@ import { extractLocationFromQuery } from '../utils/locationExtractor.js';
 import { classifyFollowUp } from '../services/followup/followUpClassifier.js';
 import axios from 'axios';
 
+async function generateFocusedAnswer(disease, followUpQuery, publications) {
+  if (!process.env.GROQ_API_KEY) return null;
+  try {
+    const topPapers = (publications ?? []).slice(0, 5).map((p, i) =>
+      `[P${i + 1}] ${p.title} (${p.year}): ${(p.abstract || '').slice(0, 200)}`
+    ).join('\n');
+
+    const prompt = `You are a medical research assistant. Answer this follow-up question about ${disease} in exactly 5-6 lines using only the provided papers.
+
+Question: "${followUpQuery}"
+
+Papers:
+${topPapers}
+
+Return a JSON object with these fields:
+{
+  "direct_answer": "A clear 5-6 line paragraph answering the question with inline citations like [P1], [P2]",
+  "key_findings": ["finding 1 with citation [P1]", "finding 2 with citation [P2]", "finding 3 with citation [P3]"],
+  "safety_notes": "Any safety concerns or important warnings (1-2 lines)"
+}
+
+Return ONLY valid JSON. No markdown, no explanation.`;
+
+    const response = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        model: process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.2,
+        max_tokens: 500,
+        response_format: { type: 'json_object' },
+      },
+      {
+        headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+        timeout: 10000,
+      },
+    );
+
+    const content = response.data?.choices?.[0]?.message?.content;
+    if (!content) return null;
+    const parsed = JSON.parse(content);
+    logger.info(`[CHAT] Focused answer generated for follow-up: "${followUpQuery}"`);
+    return parsed;
+  } catch (err) {
+    logger.warn(`[CHAT] Focused answer generation failed: ${err.message}`);
+    return null;
+  }
+}
+
 async function rewriteFollowUpQuery(disease, previousQuery, followUpQuery) {
   if (!process.env.GROQ_API_KEY) return followUpQuery;
   try {
@@ -338,6 +387,12 @@ export async function handleChat(req, res, next) {
       });
     }
 
+    // Generate focused answer for follow-up questions
+    const isFollowUp = followUpType !== 'new_query' && followUpType !== 'new_topic';
+    const focusedAnswer = isFollowUp
+      ? await generateFocusedAnswer(disease, query, pipelineResult.publications)
+      : null;
+
     session.messages.push({
       role:             'assistant',
       content:          pipelineResult.recommendation ?? pipelineResult.conditionOverview ?? '',
@@ -401,8 +456,8 @@ export async function handleChat(req, res, next) {
       validationNotice:       pipelineResult.validationNotice,
       metrics:                pipelineResult.metrics,
       provider:               pipelineResult.provider,
-      showOnlyFocused:        pipelineResult.showOnlyFocused ?? false,
-      focused_answer:         pipelineResult.focused_answer ?? null,
+      showOnlyFocused:        focusedAnswer ? true : (pipelineResult.showOnlyFocused ?? false),
+      focused_answer:         focusedAnswer ?? pipelineResult.focused_answer ?? null,
       followUpType,
       topicShift:             isTopicShift,
       welcomeBack,

@@ -2,8 +2,12 @@ import axios from 'axios';
 import logger from '../../utils/logger.js';
 import { LLM_TIMEOUT_MS } from '../../config/constants.js';
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY ?? '';
-const GROQ_MODEL   = process.env.GROQ_MODEL   ?? 'llama-3.1-8b-instant';
+const GROQ_API_KEYS = [
+  process.env.GROQ_API_KEY,
+  process.env.GROQ_API_KEY_2,
+].filter(Boolean);
+const GROQ_API_KEY = GROQ_API_KEYS[0] ?? '';
+const GROQ_MODEL   = process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile';
 const GROQ_TIMEOUT = 25_000;
 
 const OLLAMA_URL            = process.env.OLLAMA_URL            ?? 'http://localhost:11434';
@@ -25,15 +29,16 @@ if (GROQ_API_KEY) {
 
 export async function generateResponseStream(prompt, onToken) {
 
-  if (GROQ_API_KEY) {
+  for (let i = 0; i < GROQ_API_KEYS.length; i++) {
+    const apiKey = GROQ_API_KEYS[i];
     try {
-      logger.info(`[LLM] Stage 4 — Groq (${GROQ_MODEL}) | prompt length: ${prompt.length} chars (~${Math.ceil(prompt.length/4)} tokens)`);
-      return await groqStream(prompt, onToken);
+      logger.info(`[LLM] Stage 4 — Groq key #${i + 1} (${GROQ_MODEL}) | prompt: ~${Math.ceil(prompt.length / 4)} tokens`);
+      return await groqStream(prompt, onToken, apiKey);
     } catch (err) {
-      const status  = err.response?.status ?? 'no-response';
-      const detail  = err.response?.data   ?? err.message;
-      logger.error(`[LLM] Groq FAILED [HTTP ${status}]: ${JSON.stringify(detail).slice(0, 300)}`);
-      logger.warn('[LLM] Falling back to Ollama');
+      const status = err.response?.status ?? 'no-response';
+      const detail = err.response?.data ?? err.message;
+      logger.warn(`[LLM] Groq key #${i + 1} FAILED [HTTP ${status}]: ${JSON.stringify(detail).slice(0, 200)}`);
+      if (i < GROQ_API_KEYS.length - 1) logger.info(`[LLM] Trying Groq key #${i + 2}...`);
     }
   }
 
@@ -69,7 +74,7 @@ export async function generateResponseStream(prompt, onToken) {
   );
 }
 
-async function groqStream(prompt, onToken) {
+async function groqStream(prompt, onToken, apiKey = GROQ_API_KEY) {
   const estimatedTokens = Math.ceil(prompt.length / 4);
   logger.info(`[Groq] Sending request — ~${estimatedTokens} input tokens, max_tokens=2048`);
 
@@ -86,7 +91,7 @@ async function groqStream(prompt, onToken) {
     },
     {
       headers: {
-        Authorization:  `Bearer ${GROQ_API_KEY}`,
+        Authorization:  `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       timeout: GROQ_TIMEOUT,

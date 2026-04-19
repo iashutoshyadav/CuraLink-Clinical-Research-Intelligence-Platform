@@ -26,8 +26,12 @@ export async function embedQueryText(text) {
     const embedder = await getEmbedder();
     if (!embedder) return null;
     const output = await embedder(text, { pooling: 'mean', normalize: true });
-    return Array.from(output.data);
-  } catch {
+    const vec = Array.from(output.data);
+    if (!vec || vec.length === 0) return null;
+    logger.info(`[VectorCache] Embedded query — dim: ${vec.length}`);
+    return vec;
+  } catch (err) {
+    logger.warn(`[VectorCache] Embed error: ${err.message}`);
     return null;
   }
 }
@@ -60,7 +64,7 @@ export async function searchVectorCache(embedding, disease) {
 
 export async function storeVectorCache(embedding, disease, userQuery, result) {
   const index = await getIndex();
-  if (!index || !embedding) return;
+  if (!index || !embedding || !Array.isArray(embedding) || embedding.length === 0) return;
 
   try {
     const slim = {
@@ -92,6 +96,7 @@ export async function storeVectorCache(embedding, disease, userQuery, result) {
       return;
     }
 
+    logger.info(`[VectorCache] Upserting vector dim=${embedding.length}, size=${resultStr.length} bytes`);
     const id = `${disease}-${Date.now()}`.replace(/[^a-z0-9]/gi, '-').toLowerCase().slice(0, 512);
 
     await index.upsert([{

@@ -85,9 +85,10 @@ export function normalizeTrial(study) {
     .filter(Boolean);
 
   const rawContact = centralContacts[0] ?? locationContacts[0] ?? null;
+  const isValidName = (n) => n && n.length < 80 && !/questions|participation|call us|visit|http/i.test(n);
   const contact = rawContact
     ? {
-        name:  rawContact.name  ?? null,
+        name:  isValidName(rawContact.name) ? rawContact.name : null,
         role:  rawContact.role  ?? null,
         phone: rawContact.phone ?? null,
         email: rawContact.email ?? null,

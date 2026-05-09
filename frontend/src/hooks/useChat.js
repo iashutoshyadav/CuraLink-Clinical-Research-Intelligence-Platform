@@ -1,14 +1,16 @@
 import { useCallback } from 'react';
 import useChatStore from '../store/useChatStore.js';
+import useAuthStore from '../store/useAuthStore.js';
+import useHistoryStore from '../store/useHistoryStore.js';
 
 export function useChat() {
   const {
     sessionId,
     patientContext,
+    currentConversationId,
     addMessage,
     updateLastMessage,
     setLoading,
-    setStreamingText,
     appendStreamingText,
     clearStreamingText,
     setError,
@@ -16,6 +18,7 @@ export function useChat() {
     setSessionId,
     setCacheHit,
     setPipelineStage,
+    setCurrentConversationId,
   } = useChatStore();
 
   const sendMessage = useCallback(async ({ query, disease, patientName, location }) => {
@@ -36,16 +39,19 @@ export function useChat() {
     ];
 
     addMessage({ role: 'user', content: query });
-
     addMessage({ role: 'assistant', content: '', isStreaming: true });
 
     const abortController = new AbortController();
     const timeoutId = setTimeout(() => abortController.abort(), 5 * 60 * 1000);
 
     try {
+      const token = useAuthStore.getState().token;
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           disease: effectiveDisease,
           query,
@@ -56,9 +62,7 @@ export function useChat() {
         signal: abortController.signal,
       });
 
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -90,19 +94,17 @@ export function useChat() {
 
                 case 'cache':
                   setCacheHit(data.hit);
-
                   setPipelineStage(data.hit ? 'ranking' : 'fetching');
                   break;
 
                 case 'token':
-
                   if (!streamedContent) setPipelineStage('reasoning');
                   streamedContent += data.token || '';
                   appendStreamingText(data.token || '');
                   updateLastMessage({ content: streamedContent, isStreaming: true });
                   break;
 
-                case 'result':
+                case 'result': {
                   setPipelineStage('done');
                   updateLastMessage({
                     content: data.recommendation || data.conditionOverview || streamedContent,
@@ -110,18 +112,29 @@ export function useChat() {
                     result: data,
                   });
                   clearStreamingText();
-                  try {
-                    const prev = JSON.parse(localStorage.getItem('curalink_history') || '[]');
-                    prev.unshift({
-                      id: Date.now(),
+
+                  // Save conversation history only for logged-in users
+                  const user = useAuthStore.getState().user;
+                  if (user) {
+                    const store = useChatStore.getState();
+                    const convoId = store.currentConversationId || `convo_${Date.now()}`;
+                    if (!store.currentConversationId) setCurrentConversationId(convoId);
+
+                    const title = query.length > 50 ? query.slice(0, 50) + '…' : query;
+                    const convo = {
+                      id: convoId,
+                      title,
                       disease: effectiveDisease,
-                      query,
-                      timestamp: new Date().toISOString(),
-                      snippet: (data.recommendation || data.conditionOverview || '').slice(0, 120),
-                    });
-                    localStorage.setItem('curalink_history', JSON.stringify(prev.slice(0, 50)));
-                  } catch {}
+                      patientName: effectivePatient,
+                      location: effectiveLocation,
+                      messages: useChatStore.getState().messages,
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
+                    };
+                    useHistoryStore.getState().upsertConversation(user.id, convo);
+                  }
                   break;
+                }
 
                 case 'error':
                   setError(data.message || 'An error occurred');
@@ -132,9 +145,7 @@ export function useChat() {
                   setLoading(false);
                   break;
               }
-            } catch {
-
-            }
+            } catch {}
           }
         }
       }
@@ -151,7 +162,7 @@ export function useChat() {
       clearStreamingText();
       setPipelineStage(null);
     }
-  }, [sessionId, patientContext]);
+  }, [sessionId, patientContext, currentConversationId]);
 
   return { sendMessage };
 }

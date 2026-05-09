@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 const useChatStore = create((set, get) => ({
 
+  currentConversationId: null,
   sessionId: null,
   patientContext: {
     patientName: '',
@@ -18,6 +19,7 @@ const useChatStore = create((set, get) => ({
 
   pipelineStage: null,
 
+  setCurrentConversationId: (id) => set({ currentConversationId: id }),
   setSessionId: (sessionId) => set({ sessionId }),
 
   setPatientContext: (ctx) => set((state) => ({
@@ -45,10 +47,26 @@ const useChatStore = create((set, get) => ({
   clearStreamingText: () => set({ streamingText: '' }),
   setError: (error) => set({ error }),
   setCacheHit: (cacheHit) => set({ cacheHit }),
-
   clearError: () => set({ error: null }),
 
+  loadConversation: (convo) => set({
+    currentConversationId: convo.id,
+    messages: convo.messages || [],
+    patientContext: {
+      patientName: convo.patientName || '',
+      disease: convo.disease || '',
+      location: convo.location || '',
+    },
+    sessionId: null,
+    isLoading: false,
+    streamingText: '',
+    error: null,
+    cacheHit: false,
+    pipelineStage: null,
+  }),
+
   reset: () => set({
+    currentConversationId: null,
     sessionId: null,
     messages: [],
     isLoading: false,
@@ -56,6 +74,7 @@ const useChatStore = create((set, get) => ({
     error: null,
     cacheHit: false,
     pipelineStage: null,
+    patientContext: { patientName: '', disease: '', location: '' },
   }),
 }));
 

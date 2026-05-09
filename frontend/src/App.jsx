@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home.jsx';
-import Chat from './pages/Chat.jsx';
-import Navbar from './components/ui/Navbar.jsx';
+import useAuthStore from './store/useAuthStore.js';
+import useHistoryStore from './store/useHistoryStore.js';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -32,7 +32,7 @@ class ErrorBoundary extends React.Component {
             {this.state.error?.message || 'An unexpected error occurred while rendering.'}
           </p>
           <button
-            onClick={() => { this.setState({ hasError: false, error: null }); window.location.href = '/chat'; }}
+            onClick={() => { this.setState({ hasError: false, error: null }); window.location.href = '/'; }}
             className="px-4 py-2 rounded-xl text-sm font-medium"
             style={{ background: '#0d0d0d', color: '#ffffff' }}
           >
@@ -46,20 +46,21 @@ class ErrorBoundary extends React.Component {
 }
 
 export default function App() {
+  useEffect(() => {
+    useAuthStore.getState().restore().then(() => {
+      const user = useAuthStore.getState().user;
+      if (user) useHistoryStore.getState().loadHistory(user.id);
+    });
+  }, []);
+
   return (
     <BrowserRouter>
-      <div className="min-h-screen flex flex-col" style={{ background: '#ffffff' }}>
-        <Navbar />
-        <main className="flex-1 flex flex-col">
-          <ErrorBoundary>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </ErrorBoundary>
-        </main>
-      </div>
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

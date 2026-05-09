@@ -9,6 +9,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import chatRoutes from './routes/chat.routes.js';
 import sessionRoutes from './routes/session.routes.js';
 import evalRoutes from './routes/eval.routes.js';
+import authRoutes from './routes/auth.routes.js';
 import logger from './utils/logger.js';
 const { warmupEmbedder, getEmbedderStatus } = await import('./services/embeddings/embedder.js');
 const { warmUpCrossEncoder, getCrossEncoderStatus } = await import('./services/ranking/crossEncoderReranker.js');
@@ -37,6 +38,7 @@ app.use((_req, res, next) => {
   next();
 });
 
+app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/eval', evalRoutes);
